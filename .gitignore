@@ -6,3 +6,5 @@ __pycache__
 .tox
 .python-version
 .DS_Store
+venv/
+binance_futures_connector.egg-info/

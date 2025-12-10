@@ -78,6 +78,89 @@ def get_multi_asset_mode(self, **kwargs):
     return self.sign_request("GET", url_path, params)
 
 
+def new_algo_order(self, symbol: str, side: str, type: str, algoType="CONDITIONAL", **kwargs):
+    """
+    New Algo Order (CONDITIONAL Orders)
+    POST /fapi/v1/algoOrder
+
+    Mandatory:
+        symbol: string
+        side: string (BUY/SELL)
+        type: string (STOP_MARKET, TAKE_PROFIT_MARKET, STOP, TAKE_PROFIT, TRAILING_STOP_MARKET)
+        algoType: must be "CONDITIONAL"
+
+    Other params:
+        triggerPrice, quantity, closePosition, workingType, price, etc.
+    """
+
+    check_required_parameters([
+        [symbol, "symbol"],
+        [side, "side"],
+        [type, "type"],
+        [algoType, "algoType"],
+    ])
+
+    params = {
+        "symbol": symbol,
+        "side": side,
+        "type": type,
+        "algoType": algoType,
+        **kwargs
+    }
+
+    url_path = "/fapi/v1/algoOrder"
+    return self.sign_request("POST", url_path, params)
+
+
+def query_algo_order(self, algoId: int = None, clientAlgoId: str = None, **kwargs):
+    """
+    Check an algo order's status.
+    GET /fapi/v1/algoOrder
+
+    Either algoId or clientAlgoId must be sent.
+    """
+    assert algoId or clientAlgoId, "Either algoId or clientAlgoId must be provided"
+    params = {}
+    if algoId:
+        params["algoId"] = algoId
+    else:
+        params["clientAlgoId"] = clientAlgoId
+    params.update(kwargs)
+    url_path = "/fapi/v1/algoOrder"
+    return self.sign_request("GET", url_path, params)
+
+
+def cancel_algo_order(self, algoId: int = None, clientAlgoId: str = None, **kwargs):
+    """
+    Cancel an active algo order.
+    DELETE /fapi/v1/algoOrder
+    
+    Either algoid or clientalgoid must be sent.
+    """
+    assert algoId or clientAlgoId, "Either algoId or clientAlgoId must be provided"
+    params = {}
+    if algoId:
+        params["algoId"] = algoId
+    else:
+        params["clientAlgoId"] = clientAlgoId
+    params.update(kwargs)
+    url_path = "/fapi/v1/algoOrder"
+    return self.sign_request("DELETE", url_path, params)
+
+
+def cancel_all_algo_orders(self, symbol: str, **kwargs):
+    """
+    Cancel All Algo Open Orders
+    DELETE /fapi/v1/algoOpenOrders
+    
+    Mandatory:
+        symbol: string
+    """
+    params = {"symbol": symbol, **kwargs}
+    url_path = "/fapi/v1/algoOpenOrders"
+    return self.sign_request("DELETE", url_path, params)
+
+
 def new_order(self, symbol: str, side: str, type: str, **kwargs):
     """
     |

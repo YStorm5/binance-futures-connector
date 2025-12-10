@@ -1,19 +1,20 @@
-# Binance Futures Public API Connector Python - DEPRECATED
+# Binance Futures Public API Connector Python
+
 [![Python version](https://img.shields.io/pypi/pyversions/binance-futures-connector)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**This repository is deprecated. Please use the new modular connector repository: [binance-connector-python](https://github.com/binance/binance-connector-python)**
+This is a lightweight library that works as a connector to [Binance Futures public API](https://developers.binance.com/docs/derivatives/Introduction)
 
 This is a lightweight library that works as a connector to [Binance Futures public API](https://developers.binance.com/docs/derivatives/Introduction)
 
-- Supported APIs:
-    - USDT-M Futures `/fapi/*`
-    - COIN-M Delivery `/dapi/*`
-    - Futures/Delivery Websocket Market Stream
-    - Futures/Delivery User Data Stream
-- Inclusion of examples
-- Customizable base URL, request timeout
-- Response metadata can be displayed
+-   Supported APIs:
+    -   USDT-M Futures `/fapi/*`
+    -   COIN-M Delivery `/dapi/*`
+    -   Futures/Delivery Websocket Market Stream
+    -   Futures/Delivery User Data Stream
+-   Inclusion of examples
+-   Customizable base URL, request timeout
+-   Response metadata can be displayed
 
 ## Installation
 
@@ -21,10 +22,10 @@ This is a lightweight library that works as a connector to [Binance Futures publ
 pip install binance-futures-connector
 ```
 
-
 ## RESTful APIs
 
 Usage examples:
+
 ```python
 
 from binance.cm_futures import CMFutures
@@ -52,9 +53,11 @@ params = {
 response = cm_futures_client.new_order(**params)
 print(response)
 ```
+
 Please find `examples` folder to check for more endpoints.
 
 ## Authentication
+
 Binance supports HMAC and RSA API authentication.
 
 ```python
@@ -71,6 +74,7 @@ private_key_passphrase = "" # Optional: only used for encrypted RSA key
 client = Client(key=key, private_key=private_key, private_key_passphrase=private_key_passphrase)
 print(client.account())
 ```
+
 Please see `examples/um_futures/trade/get_account.py` or `examples/cm_futures/trade/get_account.py` for more details.
 
 ### Base URL
@@ -118,6 +122,7 @@ client= CMFutures(timeout=1)
 ```
 
 ### Proxy
+
 proxy is supported
 
 ```python
@@ -139,11 +144,13 @@ from binance.cm_futures import CMFutures
 client = CMFutures(show_limit_usage=True)
 print(client.time())
 ```
+
 returns:
 
 ```python
 {'limit_usage': {'x-mbx-used-weight-1m': '1'}, 'data': {'serverTime': 1653563092778}}
 ```
+
 You can also display full response metadata to help in debugging:
 
 ```python
@@ -166,23 +173,25 @@ Setting the log level to `DEBUG` will log the request URL, payload and response 
 ### Error
 
 There are 2 types of error returned from the library:
-- `binance.error.ClientError`
-    - This is thrown when server returns `4XX`, it's an issue from client side.
-    - It has 4 properties:
-        - `status_code` - HTTP status code
-        - `error_code` - Server's error code, e.g. `-1102`
-        - `error_message` - Server's error message, e.g. `Unknown order sent.`
-        - `header` - Full response header.
-- `binance.error.ServerError`
-    - This is thrown when server returns `5XX`, it's an issue from server side.
+
+-   `binance.error.ClientError`
+    -   This is thrown when server returns `4XX`, it's an issue from client side.
+    -   It has 4 properties:
+        -   `status_code` - HTTP status code
+        -   `error_code` - Server's error code, e.g. `-1102`
+        -   `error_message` - Server's error message, e.g. `Unknown order sent.`
+        -   `header` - Full response header.
+-   `binance.error.ServerError`
+    -   This is thrown when server returns `5XX`, it's an issue from server side.
 
 ## Websocket
 
 ### Connector v4
 
 WebSocket can be established through the following connections:
-- USD-M WebSocket Stream (`https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Connect`)
-- COIN-M WebSocket Stream (`https://developers.binance.com/docs/derivatives/coin-margined-futures/websocket-market-streams/Connect`)
+
+-   USD-M WebSocket Stream (`https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Connect`)
+-   COIN-M WebSocket Stream (`https://developers.binance.com/docs/derivatives/coin-margined-futures/websocket-market-streams/Connect`)
 
 ```python
 # WebSocket Stream Client
@@ -212,6 +221,7 @@ my_client.agg_trade(symbol="bnbusdt", id="my_request_id")
 # library will generate a random uuid string
 my_client.agg_trade(symbol="bnbusdt")
 ```
+
 #### Proxy
 
 Proxy is supported for both WebSocket CM futures and UM futures.
@@ -253,10 +263,10 @@ logging.info("closing ws connection")
 my_client.stop()
 ```
 
-
 #### Combined Streams
-- If you set `is_combined` to `True`, `"/stream/"` will be appended to the `baseURL` to allow for Combining streams.
-- `is_combined` defaults to `False` and `"/ws/"` (raw streams) will be appended to the `baseURL`.
+
+-   If you set `is_combined` to `True`, `"/stream/"` will be appended to the `baseURL` to allow for Combining streams.
+-   `is_combined` defaults to `False` and `"/ws/"` (raw streams) will be appended to the `baseURL`.
 
 More websocket examples are available in the `examples` folder
 
@@ -285,4 +295,5 @@ Once connected, the websocket server sends a ping frame every 3 minutes and requ
 a 10 minutes period. This package handles the pong responses automatically.
 
 ## License
+
 MIT

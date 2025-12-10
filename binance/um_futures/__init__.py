@@ -79,6 +79,10 @@ class UMFutures(API):
     from binance.um_futures.account import async_download_trade_id
     from binance.um_futures.account import toggle_bnb_burn
     from binance.um_futures.account import get_bnb_burn
+    from binance.um_futures.account import new_algo_order
+    from binance.um_futures.account import cancel_algo_order
+    from binance.um_futures.account import cancel_all_algo_orders
+    from binance.um_futures.account import query_algo_order
 
     # CONVERT
     from binance.um_futures.convert import list_all_convert_pairs
