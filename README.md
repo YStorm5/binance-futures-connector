@@ -5,8 +5,6 @@
 
 This is a lightweight library that works as a connector to [Binance Futures public API](https://developers.binance.com/docs/derivatives/Introduction)
 
-This is a lightweight library that works as a connector to [Binance Futures public API](https://developers.binance.com/docs/derivatives/Introduction)
-
 -   Supported APIs:
     -   USDT-M Futures `/fapi/*`
     -   COIN-M Delivery `/dapi/*`
@@ -265,8 +263,29 @@ my_client.stop()
 
 #### Combined Streams
 
--   If you set `is_combined` to `True`, `"/stream/"` will be appended to the `baseURL` to allow for Combining streams.
--   `is_combined` defaults to `False` and `"/ws/"` (raw streams) will be appended to the `baseURL`.
+-   If you set `is_combined` to `True`, `"/stream/"` will be appended to the routed `baseURL` to allow for Combining streams.
+-   `is_combined` defaults to `False` and `"/ws/"` (raw streams) will be appended to the routed `baseURL`.
+
+#### USD-M WebSocket routed endpoints
+
+USD-M WebSocket streams use Binance's routed endpoints:
+
+-   Public high-frequency streams: `wss://fstream.binance.com/public`
+-   Market streams: `wss://fstream.binance.com/market`
+-   Private user data streams: `wss://fstream.binance.com/private`
+
+`UMFuturesWebsocketClient` defaults to the Market route. Public stream helpers such as `book_ticker`, `diff_book_depth`, and `partial_book_depth` are sent through the Public route automatically. `user_data` is sent through the Private route automatically.
+
+You can choose a default route explicitly:
+
+```python
+my_client = UMFuturesWebsocketClient(
+    on_message=message_handler,
+    stream_category=UMFuturesWebsocketClient.STREAM_CATEGORY_PUBLIC,
+)
+```
+
+Pass `stream_category=None` to keep the legacy unrouted URL behavior.
 
 More websocket examples are available in the `examples` folder
 

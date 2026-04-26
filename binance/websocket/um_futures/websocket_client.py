@@ -1,9 +1,20 @@
 from typing import Optional
 
+from binance.lib.utils import get_timestamp
 from binance.websocket.websocket_client import BinanceWebsocketClient
 
 
 class UMFuturesWebsocketClient(BinanceWebsocketClient):
+    STREAM_CATEGORY_PUBLIC = "public"
+    STREAM_CATEGORY_MARKET = "market"
+    STREAM_CATEGORY_PRIVATE = "private"
+
+    _VALID_STREAM_CATEGORIES = {
+        STREAM_CATEGORY_PUBLIC,
+        STREAM_CATEGORY_MARKET,
+        STREAM_CATEGORY_PRIVATE,
+    }
+
     def __init__(
         self,
         stream_url="wss://fstream.binance.com",
@@ -15,13 +26,22 @@ class UMFuturesWebsocketClient(BinanceWebsocketClient):
         on_pong=None,
         is_combined=False,
         proxies: Optional[dict] = None,
+        stream_category=STREAM_CATEGORY_MARKET,
     ):
-        if is_combined:
-            stream_url = stream_url + "/stream"
-        else:
-            stream_url = stream_url + "/ws"
+        self.base_stream_url = self._normalize_base_stream_url(stream_url)
+        self.is_combined = is_combined
+        self.stream_category = self._validate_stream_category(stream_category)
+        self._stream_clients = {}
+        self._on_message = on_message
+        self._on_open = on_open
+        self._on_close = on_close
+        self._on_error = on_error
+        self._on_ping = on_ping
+        self._on_pong = on_pong
+        self._proxies = proxies
+
         super().__init__(
-            stream_url,
+            self._build_stream_url(self.stream_category),
             on_message=on_message,
             on_open=on_open,
             on_close=on_close,
@@ -30,6 +50,146 @@ class UMFuturesWebsocketClient(BinanceWebsocketClient):
             on_pong=on_pong,
             proxies=proxies,
         )
+
+    def _normalize_base_stream_url(self, stream_url):
+        stream_url = stream_url.rstrip("/")
+
+        for mode in ("/ws", "/stream"):
+            if stream_url.endswith(mode):
+                stream_url = stream_url[: -len(mode)]
+                break
+
+        for stream_category in self._VALID_STREAM_CATEGORIES:
+            suffix = "/{}".format(stream_category)
+            if stream_url.endswith(suffix):
+                stream_url = stream_url[: -len(suffix)]
+                break
+
+        return stream_url.rstrip("/")
+
+    def _validate_stream_category(self, stream_category):
+        if stream_category is None:
+            return stream_category
+
+        stream_category = stream_category.lower()
+        if stream_category not in self._VALID_STREAM_CATEGORIES:
+            raise ValueError(
+                "Invalid stream_category, expected one of: {}".format(
+                    ", ".join(sorted(self._VALID_STREAM_CATEGORIES))
+                )
+            )
+        return stream_category
+
+    def _build_stream_url(self, stream_category):
+        stream_url = self.base_stream_url
+        if stream_category:
+            stream_url = "{}/{}".format(stream_url, stream_category)
+
+        if self.is_combined:
+            return stream_url + "/stream"
+        return stream_url + "/ws"
+
+    def _get_stream_client(self, stream_category):
+        stream_category = self._validate_stream_category(stream_category)
+        if stream_category == self.stream_category:
+            return self
+
+        if stream_category not in self._stream_clients:
+            self._stream_clients[stream_category] = BinanceWebsocketClient(
+                self._build_stream_url(stream_category),
+                on_message=self._on_message,
+                on_open=self._on_open,
+                on_close=self._on_close,
+                on_error=self._on_error,
+                on_ping=self._on_ping,
+                on_pong=self._on_pong,
+                logger=self.logger,
+                proxies=self._proxies,
+            )
+
+        return self._stream_clients[stream_category]
+
+    def _stream_category_for_stream(self, stream):
+        stream = stream.lower()
+
+        if (
+            stream == "!bookticker"
+            or "@bookticker" in stream
+            or "@depth" in stream
+            or "@rpidepth" in stream
+        ):
+            return self.STREAM_CATEGORY_PUBLIC
+
+        if (
+            "@aggtrade" in stream
+            or "@markprice" in stream
+            or "@kline_" in stream
+            or "@continuouskline_" in stream
+            or "@miniticker" in stream
+            or stream == "!miniticker@arr"
+            or "@ticker" in stream
+            or stream == "!ticker@arr"
+            or "@forceorder" in stream
+            or stream == "!forceorder@arr"
+            or "@compositeindex" in stream
+            or stream == "!contractinfo"
+            or "@assetindex" in stream
+            or stream == "!assetindex@arr"
+        ):
+            return self.STREAM_CATEGORY_MARKET
+
+        return self.stream_category
+
+    def _group_streams_by_category(self, streams, stream_category=None):
+        if isinstance(streams, str):
+            streams = [streams]
+        elif not isinstance(streams, list):
+            raise ValueError("Invalid stream name, expect string or array")
+
+        groups = {}
+        for stream in streams:
+            category = stream_category or self._stream_category_for_stream(stream)
+            groups.setdefault(category, []).append(stream)
+        return groups
+
+    def send_message_to_server(self, message, action=None, id=None, stream_category=None):
+        if not id:
+            id = get_timestamp()
+
+        if action != self.ACTION_UNSUBSCRIBE:
+            return self.subscribe(message, id=id, stream_category=stream_category)
+        return self.unsubscribe(message, id=id, stream_category=stream_category)
+
+    def subscribe(self, stream, id=None, stream_category=None):
+        if not id:
+            id = get_timestamp()
+
+        for category, streams in self._group_streams_by_category(
+            stream, stream_category=stream_category
+        ).items():
+            client = self._get_stream_client(category)
+            BinanceWebsocketClient.subscribe(client, streams, id=id)
+
+    def unsubscribe(self, stream, id=None, stream_category=None):
+        if not id:
+            id = get_timestamp()
+
+        for category, streams in self._group_streams_by_category(
+            stream, stream_category=stream_category
+        ).items():
+            client = self._get_stream_client(category)
+            BinanceWebsocketClient.unsubscribe(client, streams, id=id)
+
+    def ping(self):
+        BinanceWebsocketClient.ping(self)
+        for client in self._stream_clients.values():
+            client.ping()
+
+    def stop(self, id=None):
+        for client in self._stream_clients.values():
+            client.stop()
+        self._stream_clients.clear()
+        BinanceWebsocketClient.stop(self, id=id)
 
     def agg_trade(self, symbol: str, id=None, action=None, **kwargs):
         """Aggregate Trade Streams
@@ -287,4 +447,9 @@ class UMFuturesWebsocketClient(BinanceWebsocketClient):
 
     def user_data(self, listen_key: str, id=None, action=None, **kwargs):
         """Listen to user data by using the provided listen_key"""
-        self.send_message_to_server(listen_key, action=action, id=id)
+        self.send_message_to_server(
+            listen_key,
+            action=action,
+            id=id,
+            stream_category=self.STREAM_CATEGORY_PRIVATE,
+        )
